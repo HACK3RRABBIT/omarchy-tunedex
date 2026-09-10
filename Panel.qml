@@ -6,6 +6,7 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 import "Model.js" as Model
+import "I18n.js" as I18n
 
 // Unofficial Tunedex client. Signs in through the same browser/desktop code
 // flow the site's own PWA uses (POST /api/login/start, poll /api/login/poll
@@ -61,6 +62,22 @@ Panel {
   // =====================================================================
   property var session: null                 // {token,user,admin,notify,langChosen,bot}
   readonly property bool signedIn: !!session
+
+  // UI language follows the account's Tunedex language (same strings the
+  // site itself uses for these keys). Layout stays left-to-right even for
+  // Persian — no RTL mirroring — but the text is real, not placeholder.
+  readonly property string langCode: (session && session.lang) || "en"
+  function tr(key, params) { return I18n.t(root.langCode, key, params) }
+
+  // Site's own Home greeting has no name in it; showing one here is a
+  // deliberate addition, not a site-parity thing.
+  function homeGreeting() {
+    var h = new Date().getHours()
+    var key = h < 12 ? "greet_morning" : h < 18 ? "greet_afternoon" : "greet_evening"
+    var greeting = root.tr(key)
+    var name = root.session && root.session.user ? (root.session.user.first_name || root.session.user.username || "") : ""
+    return name ? greeting + ", " + name : greeting
+  }
 
   property FileView sessionFile: FileView {
     path: Quickshell.env("HOME") + "/.local/state/omarchy/settings/tunedex.json"
@@ -281,7 +298,7 @@ Panel {
         root.tracksLoading = false
         var r = Model.splitHttpOutput(text)
         if (r.status === 401) { root.refreshSession(); return }
-        if (r.status === 402 || r.status === 429) { root.libraryNotice = "Daily limit reached — try again tomorrow"; return }
+        if (r.status === 402 || r.status === 429) { root.libraryNotice = root.tr("daily_limit"); return }
         if (r.status < 200 || r.status >= 300) return
         var page = Model.parseTracksPage(Model.parseJson(r.body, {}))
         root.indexTracks(page.items)
@@ -378,7 +395,7 @@ Panel {
         root.playlistBusy = false
         var r = Model.splitHttpOutput(text)
         if (r.status === 401) { root.refreshSession(); return }
-        if (r.status < 200 || r.status >= 300) { root.libraryNotice = "Couldn't create the playlist."; return }
+        if (r.status < 200 || r.status >= 300) { root.libraryNotice = root.tr("could_not_create_playlist"); return }
         var pl = Model.parseJson(r.body, null)
         if (pl) { root.playlists = root.playlists.concat([pl]); root.newPlaylistName = ""; root.activeSheet = "" }
       }
@@ -448,7 +465,7 @@ Panel {
     var ref = root.connectRef.trim()
     if (!ref || !root.session || root.connectBusy) return
     root.connectBusy = true
-    root.connectMsg = "Connecting…"
+    root.connectMsg = root.tr("connecting")
     connectChannelProc.command = Model.connectChannelArgs(root.session.token, ref)
     connectChannelProc.running = true
   }
@@ -460,8 +477,8 @@ Panel {
         root.connectBusy = false
         var r = Model.splitHttpOutput(text)
         if (r.status === 401) { root.refreshSession(); return }
-        if (r.status < 200 || r.status >= 300) { root.connectMsg = "Couldn't connect that channel."; return }
-        root.connectMsg = "Connected — indexing will start shortly."
+        if (r.status < 200 || r.status >= 300) { root.connectMsg = root.tr("could_not_connect"); return }
+        root.connectMsg = root.tr("connected_indexing")
         root.connectRef = ""
         root.loadLibrary()
       }
@@ -841,7 +858,7 @@ Panel {
         root.pendingPlaybackRetryTrackId = root.currentTrackId
         root.refreshSession()
       } else {
-        root.playerError = errorString || "Playback error"
+        root.playerError = errorString || root.tr("playback_error")
       }
     }
     onPlaybackStateChanged: if (mediaPlayer.playbackState === MediaPlayer.PlayingState) { root.playbackRetries = 0; root.playerError = "" }
@@ -942,12 +959,12 @@ Panel {
 
             IconButton {
               icon: "settings"
-              tooltip: "Settings"
+              tooltip: root.tr("settings")
               onActivated: root.activeSheet = "settings"
             }
             IconButton {
               icon: "logout"
-              tooltip: "Sign out"
+              tooltip: root.tr("sign_out")
               onActivated: root.requestSignOut()
             }
           }
@@ -965,7 +982,7 @@ Panel {
           TextField {
             id: searchField
             anchors.fill: parent
-            placeholderText: "Search your library"
+            placeholderText: root.tr("search_placeholder")
             font.family: Style.font.family
             leftPadding: Style.space(30)
             onTextChanged: root.searchQuery = text
@@ -1000,7 +1017,7 @@ Panel {
           spacing: Style.space(6)
 
           Repeater {
-            model: [{ id: "home", label: "Home", icon: "home" }, { id: "library", label: "Library", icon: "library" }]
+            model: [{ id: "home", label: root.tr("tab_home"), icon: "home" }, { id: "library", label: root.tr("tab_library"), icon: "library" }]
             Rectangle {
               id: tabPill
               required property var modelData
@@ -1051,7 +1068,7 @@ Panel {
 
           Text {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: "Sign in to Tunedex"
+            text: root.tr("signin_title")
             color: Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.title
@@ -1063,9 +1080,8 @@ Panel {
             width: Style.space(320)
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.WordWrap
-            text: root.signinExpired ? "That sign-in code expired." :
-                  (root.signinCode !== "" ? "Confirm in Telegram, then come back — this closes on its own." :
-                  "Confirms through your Tunedex bot on Telegram. No browser, no re-typing anything here.")
+            text: root.signinExpired ? root.tr("signin_expired") :
+                  (root.signinCode !== "" ? root.tr("signin_hint_waiting") : root.tr("signin_hint_idle"))
             color: Qt.darker(Color.foreground, 1.5)
             font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
@@ -1073,7 +1089,7 @@ Panel {
 
           Button {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: root.signinBusy ? "Waiting for confirmation…" : (root.signinExpired ? "Try again" : "Sign in with Telegram")
+            text: root.signinBusy ? root.tr("signin_waiting") : (root.signinExpired ? root.tr("try_again") : root.tr("signin_btn"))
             foreground: Color.background
             background: Color.accent
             bordered: false
@@ -1088,7 +1104,7 @@ Panel {
           Text {
             visible: root.signinCode !== "" && !root.signinExpired
             anchors.horizontalCenter: parent.horizontalCenter
-            text: "or send  /start login_" + root.signinCode + "  to @" + root.signinBot
+            text: root.tr("signin_manual", { code: "/start login_" + root.signinCode, bot: root.signinBot })
             color: Qt.darker(Color.foreground, 1.5)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
@@ -1129,7 +1145,7 @@ Panel {
               Text {
                 anchors.centerIn: parent
                 visible: !root.searchLoading && root.visibleTracks.length === 0
-                text: "No matches"
+                text: root.tr("no_matches")
                 color: Qt.darker(Color.foreground, 1.5)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.bodySmall
@@ -1137,7 +1153,7 @@ Panel {
               Text {
                 anchors.centerIn: parent
                 visible: root.searchLoading
-                text: "Searching…"
+                text: root.tr("searching")
                 color: Qt.darker(Color.foreground, 1.5)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.bodySmall
@@ -1160,11 +1176,13 @@ Panel {
               spacing: Style.space(16)
 
               Text {
-                text: { var h = new Date().getHours(); return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening" }
+                text: root.homeGreeting()
                 color: Color.foreground
                 font.family: Style.font.family
                 font.pixelSize: Style.font.title
                 font.bold: true
+                elide: Text.ElideRight
+                width: parent.width
               }
 
               // continue listening
@@ -1192,7 +1210,7 @@ Panel {
                     width: parent.width - Style.space(96)
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: Style.space(2)
-                    Text { text: "Continue listening"; color: Qt.darker(Color.foreground, 1.4); font.family: Style.font.family; font.pixelSize: Style.font.caption }
+                    Text { text: root.tr("continue_listening"); color: Qt.darker(Color.foreground, 1.4); font.family: Style.font.family; font.pixelSize: Style.font.caption }
                     Text { text: root.currentTitle; color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.body; elide: Text.ElideRight; width: parent.width }
                   }
                 }
@@ -1214,7 +1232,7 @@ Panel {
                     anchors.left: parent.left; anchors.leftMargin: Style.space(8); anchors.verticalCenter: parent.verticalCenter
                     spacing: Style.space(6)
                     Icon { name: "heartFilled"; color: Color.accent; width: Style.space(14); height: Style.space(14); anchors.verticalCenter: parent.verticalCenter }
-                    Text { text: "Liked Songs"; color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.bodySmall; anchors.verticalCenter: parent.verticalCenter }
+                    Text { text: root.tr("liked_songs"); color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.bodySmall; anchors.verticalCenter: parent.verticalCenter }
                   }
                   MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.openGroup({ kind: "liked" }) }
                 }
@@ -1243,7 +1261,7 @@ Panel {
                 width: parent.width
                 spacing: Style.space(4)
                 visible: root.tracks.length > 0
-                Text { text: "Latest in your library"; color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.subtitle; font.bold: true }
+                Text { text: root.tr("latest_in_library"); color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.subtitle; font.bold: true }
                 Repeater {
                   model: root.tracks.slice(0, 8)
                   TrackRow {
@@ -1265,7 +1283,7 @@ Panel {
                 width: parent.width
                 spacing: Style.space(4)
                 visible: root.recentsItems.length > 0
-                Text { text: "Recently played"; color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.subtitle; font.bold: true }
+                Text { text: root.tr("recently_played"); color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.subtitle; font.bold: true }
                 Repeater {
                   model: root.recentsItems
                   TrackRow {
@@ -1286,7 +1304,7 @@ Panel {
                 visible: !root.tracks.length && !root.recentsItems.length && root.mixes.length === 0 && root.likes.length === 0
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
-                text: "Nothing here yet — head to Library to connect a channel or check your tracks."
+                text: root.tr("home_empty")
                 wrapMode: Text.WordWrap
                 color: Qt.darker(Color.foreground, 1.5)
                 font.family: Style.font.family
@@ -1331,7 +1349,7 @@ Panel {
                 width: parent.width
                 spacing: Style.space(8)
                 Button {
-                  text: "Play"
+                  text: root.tr("play")
                   foreground: Color.background
                   background: Color.accent
                   bordered: false
@@ -1340,7 +1358,7 @@ Panel {
                   onClicked: if (root.groupItems.length) root.playFromList(root.groupItems.map(function(t) { return t.id }), 0)
                 }
                 Button {
-                  text: "Shuffle"
+                  text: root.tr("shuffle")
                   foreground: Color.foreground
                   bordered: true
                   horizontalPadding: Style.space(14)
@@ -1359,19 +1377,19 @@ Panel {
                 IconButton {
                   visible: root.group && root.group.kind === "playlist"
                   icon: "close"
-                  tooltip: "Delete playlist"
+                  tooltip: root.tr("delete_playlist")
                   onActivated: if (root.group) root.deletePlaylist(root.group.id)
                 }
                 IconButton {
                   visible: root.group && root.group.kind === "channel"
                   icon: "close"
-                  tooltip: "Remove channel"
+                  tooltip: root.tr("remove_channel")
                   onActivated: if (root.group) root.removeChannel(root.group.id)
                 }
                 IconButton {
                   visible: root.group && root.group.kind === "mix"
                   icon: "plus"
-                  tooltip: "Save as playlist"
+                  tooltip: root.tr("save_as_playlist")
                   onActivated: if (root.group) root.saveMixAsPlaylist(root.group.mix)
                 }
               }
@@ -1405,7 +1423,7 @@ Panel {
                 Text {
                   anchors.horizontalCenter: parent.horizontalCenter
                   visible: !root.groupLoading && root.groupItems.length === 0
-                  text: "Nothing here"
+                  text: root.tr("nothing_here")
                   color: Qt.darker(Color.foreground, 1.5)
                   font.family: Style.font.family
                   font.pixelSize: Style.font.bodySmall
@@ -1413,7 +1431,7 @@ Panel {
                 Button {
                   anchors.horizontalCenter: parent.horizontalCenter
                   visible: !root.groupDone && !root.groupLoading && root.groupItems.length > 0
-                  text: "Load more"
+                  text: root.tr("load_more")
                   foreground: Color.foreground
                   bordered: true
                   onClicked: root.loadGroupPage()
@@ -1421,7 +1439,7 @@ Panel {
                 Text {
                   anchors.horizontalCenter: parent.horizontalCenter
                   visible: root.groupLoading
-                  text: "Loading…"
+                  text: root.tr("loading")
                   color: Qt.darker(Color.foreground, 1.5)
                   font.family: Style.font.family
                   font.pixelSize: Style.font.bodySmall
@@ -1443,7 +1461,7 @@ Panel {
                 width: parent.width
                 spacing: Style.space(6)
                 Repeater {
-                  model: [["tracks", "Tracks"], ["playlists", "Playlists"], ["liked", "Liked"], ["artists", "Artists"], ["albums", "Albums"], ["genres", "Genres"], ["channels", "Channels"]]
+                  model: [["tracks", root.tr("lib_tracks")], ["playlists", root.tr("lib_playlists")], ["liked", root.tr("lib_liked")], ["artists", root.tr("lib_artists")], ["albums", root.tr("lib_albums")], ["genres", root.tr("lib_genres")], ["channels", root.tr("lib_channels")]]
                   Rectangle {
                     required property var modelData
                     readonly property bool on: root.libChip === modelData[0]
@@ -1488,7 +1506,7 @@ Panel {
                   Button {
                     anchors.horizontalCenter: parent.horizontalCenter
                     visible: root.tracksNext && !root.tracksLoading
-                    text: "Load more"
+                    text: root.tr("load_more")
                     foreground: Color.foreground
                     bordered: true
                     onClicked: root.loadMoreTracks()
@@ -1510,7 +1528,7 @@ Panel {
                   width: parent.width
                   spacing: Style.space(4)
                   Button {
-                    text: "New playlist"
+                    text: root.tr("new_playlist")
                     foreground: Color.foreground
                     bordered: true
                     width: parent.width
@@ -1529,7 +1547,7 @@ Panel {
                         Column {
                           anchors.verticalCenter: parent.verticalCenter
                           Text { text: modelData.title; color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.body }
-                          Text { text: (modelData.tracks ? modelData.tracks.length : 0) + " tracks" + (modelData.followed ? " · saved" : ""); color: Qt.darker(Color.foreground, 1.5); font.family: Style.font.family; font.pixelSize: Style.font.caption }
+                          Text { text: (modelData.tracks ? modelData.tracks.length : 0) + root.tr("playlist_tracks_sub") + (modelData.followed ? root.tr("saved_sub") : ""); color: Qt.darker(Color.foreground, 1.5); font.family: Style.font.family; font.pixelSize: Style.font.caption }
                         }
                       }
                       MouseArea { id: plHover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.openGroup({ kind: "playlist", id: modelData.id }) }
@@ -1537,7 +1555,7 @@ Panel {
                   }
                   Text {
                     visible: root.playlists.length === 0
-                    text: "No playlists yet"
+                    text: root.tr("no_playlists")
                     color: Qt.darker(Color.foreground, 1.5)
                     font.family: Style.font.family
                     font.pixelSize: Style.font.bodySmall
@@ -1571,7 +1589,7 @@ Panel {
                         Text {
                           width: parent.width - Style.space(50)
                           anchors.verticalCenter: parent.verticalCenter
-                          text: modelData.name || "Unknown"
+                          text: modelData.name || root.tr("unknown")
                           color: Color.foreground
                           font.family: Style.font.family
                           font.pixelSize: Style.font.body
@@ -1579,7 +1597,7 @@ Panel {
                         }
                         Text {
                           anchors.verticalCenter: parent.verticalCenter
-                          text: (modelData.n || 0) + " tracks"
+                          text: (modelData.n || 0) + root.tr("playlist_tracks_sub")
                           color: Qt.darker(Color.foreground, 1.5)
                           font.family: Style.font.family
                           font.pixelSize: Style.font.caption
@@ -1591,7 +1609,7 @@ Panel {
                   Button {
                     anchors.horizontalCenter: parent.horizontalCenter
                     visible: !root.groupsListDone && !root.groupsListLoading
-                    text: "Load more"
+                    text: root.tr("load_more")
                     foreground: Color.foreground
                     bordered: true
                     onClicked: root.loadGroupsList(root.libChip)
@@ -1613,7 +1631,7 @@ Panel {
                   width: parent.width
                   spacing: Style.space(4)
                   Button {
-                    text: "Connect channel"
+                    text: root.tr("connect_channel")
                     foreground: Color.foreground
                     bordered: true
                     width: parent.width
@@ -1631,7 +1649,7 @@ Panel {
                         Icon { name: "music"; color: Qt.darker(Color.foreground, 1.4); width: Style.space(18); height: Style.space(18); anchors.verticalCenter: parent.verticalCenter }
                         Column {
                           anchors.verticalCenter: parent.verticalCenter
-                          Text { text: modelData.title || modelData.username || "Channel"; color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.body }
+                          Text { text: modelData.title || modelData.username || root.tr("channel_word"); color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.body }
                           Text { text: modelData.status || ""; color: Qt.darker(Color.foreground, 1.5); font.family: Style.font.family; font.pixelSize: Style.font.caption }
                         }
                       }
@@ -1640,7 +1658,7 @@ Panel {
                   }
                   Text {
                     visible: root.myChannels.length === 0
-                    text: "No channels connected"
+                    text: root.tr("no_channels")
                     color: Qt.darker(Color.foreground, 1.5)
                     font.family: Style.font.family
                     font.pixelSize: Style.font.bodySmall
@@ -1857,22 +1875,22 @@ Panel {
                 Text { text: parent.t ? Model.trackTitle(parent.t) : ""; color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.title; font.bold: true; elide: Text.ElideRight; width: parent.width }
                 Text { text: parent.t ? Model.trackArtist(parent.t) : ""; visible: text !== ""; color: Qt.darker(Color.foreground, 1.5); font.family: Style.font.family; font.pixelSize: Style.font.bodySmall; bottomPadding: Style.space(8) }
 
-                SheetOption { icon: "next"; label: "Play next"; onActivated: { root.playNextInQueue(root.sheetTrackId); root.closeSheet() } }
-                SheetOption { icon: "queue"; label: "Add to queue"; onActivated: { root.appendToQueue(root.sheetTrackId); root.closeSheet() } }
+                SheetOption { icon: "next"; label: root.tr("play_next"); onActivated: { root.playNextInQueue(root.sheetTrackId); root.closeSheet() } }
+                SheetOption { icon: "queue"; label: root.tr("add_to_queue"); onActivated: { root.appendToQueue(root.sheetTrackId); root.closeSheet() } }
                 SheetOption {
                   icon: root.sheetTrackId !== null && root.isLiked(root.sheetTrackId) ? "heartFilled" : "heart"
-                  label: root.sheetTrackId !== null && root.isLiked(root.sheetTrackId) ? "Unlike" : "Like"
+                  label: root.sheetTrackId !== null && root.isLiked(root.sheetTrackId) ? root.tr("unlike") : root.tr("like")
                   onActivated: if (root.sheetTrackId !== null) root.toggleLike(root.sheetTrackId)
                 }
-                SheetOption { icon: "plus"; label: "Add to playlist"; onActivated: root.openPlaylistPicker(root.sheetTrackId) }
+                SheetOption { icon: "plus"; label: root.tr("add_to_playlist"); onActivated: root.openPlaylistPicker(root.sheetTrackId) }
                 SheetOption {
                   visible: parent.t && parent.t.performer
-                  icon: "library"; label: "Go to artist"
+                  icon: "library"; label: root.tr("go_to_artist")
                   onActivated: { root.closeSheet(); root.openGroup({ kind: "artists", name: parent.t.performer }) }
                 }
                 SheetOption {
                   visible: parent.t && parent.t.album
-                  icon: "library"; label: "Go to album"
+                  icon: "library"; label: root.tr("go_to_album")
                   onActivated: { root.closeSheet(); root.openGroup({ kind: "albums", name: parent.t.album }) }
                 }
               }
@@ -1882,7 +1900,7 @@ Panel {
                 width: parent.width
                 spacing: Style.space(2)
                 visible: root.activeSheet === "playlistPicker"
-                Text { text: "Add to playlist"; color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.title; font.bold: true; bottomPadding: Style.space(6) }
+                Text { text: root.tr("add_to_playlist"); color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.title; font.bold: true; bottomPadding: Style.space(6) }
                 Repeater {
                   model: root.playlists.filter(function(p) { return !p.followed })
                   SheetOption {
@@ -1892,7 +1910,7 @@ Panel {
                     onActivated: if (root.sheetTrackId !== null) root.togglePlaylistMembership(modelData.id, root.sheetTrackId)
                   }
                 }
-                SheetOption { icon: "plus"; label: "New playlist…"; onActivated: root.activeSheet = "newPlaylist" }
+                SheetOption { icon: "plus"; label: root.tr("new_playlist_ellipsis"); onActivated: root.activeSheet = "newPlaylist" }
               }
 
               // ---- new playlist ----
@@ -1900,18 +1918,18 @@ Panel {
                 width: parent.width
                 spacing: Style.space(8)
                 visible: root.activeSheet === "newPlaylist"
-                Text { text: "New playlist"; color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.title; font.bold: true }
+                Text { text: root.tr("new_playlist"); color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.title; font.bold: true }
                 TextField {
                   id: newPlaylistField
                   width: parent.width
-                  placeholderText: "Name"
+                  placeholderText: root.tr("name_placeholder")
                   font.family: Style.font.family
                   text: root.newPlaylistName
                   onTextChanged: root.newPlaylistName = text
                   Keys.onReturnPressed: root.submitNewPlaylist()
                 }
                 Button {
-                  text: root.playlistBusy ? "Creating…" : "Create"
+                  text: root.playlistBusy ? root.tr("creating") : root.tr("create")
                   foreground: Color.background
                   background: Color.accent
                   bordered: false
@@ -1926,19 +1944,19 @@ Panel {
                 width: parent.width
                 spacing: Style.space(8)
                 visible: root.activeSheet === "connectChannel"
-                Text { text: "Connect a channel"; color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.title; font.bold: true }
-                Text { text: "Paste a public @username or invite link for a Telegram channel with music."; color: Qt.darker(Color.foreground, 1.5); font.family: Style.font.family; font.pixelSize: Style.font.bodySmall; wrapMode: Text.WordWrap; width: parent.width }
+                Text { text: root.tr("connect_title"); color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.title; font.bold: true }
+                Text { text: root.tr("connect_hint"); color: Qt.darker(Color.foreground, 1.5); font.family: Style.font.family; font.pixelSize: Style.font.bodySmall; wrapMode: Text.WordWrap; width: parent.width }
                 TextField {
                   id: connectField
                   width: parent.width
-                  placeholderText: "@channel or t.me/..."
+                  placeholderText: root.tr("connect_placeholder")
                   font.family: Style.font.family
                   text: root.connectRef
                   onTextChanged: root.connectRef = text
                   Keys.onReturnPressed: root.submitConnect()
                 }
                 Button {
-                  text: root.connectBusy ? "Connecting…" : "Connect"
+                  text: root.connectBusy ? root.tr("connecting") : root.tr("connect")
                   foreground: Color.background
                   background: Color.accent
                   bordered: false
@@ -1955,15 +1973,15 @@ Panel {
                 spacing: Style.space(2)
                 visible: root.activeSheet === "sleepTimer"
                 Text {
-                  text: root.sleepMinutesLeft >= 0 ? ("Sleep timer — " + root.sleepMinutesLeft + " min left") : root.sleepEndOfTrack ? "Sleep timer — end of track" : "Sleep timer"
+                  text: root.tr("sleep_timer") + (root.sleepMinutesLeft >= 0 ? root.tr("min_left", { n: root.sleepMinutesLeft }) : root.sleepEndOfTrack ? root.tr("end_of_track_tag") : "")
                   color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.title; font.bold: true; bottomPadding: Style.space(6)
                 }
                 Repeater {
                   model: [15, 30, 45, 60]
-                  SheetOption { required property int modelData; icon: "timer"; label: modelData + " minutes"; onActivated: { root.setSleep(modelData); root.closeSheet() } }
+                  SheetOption { required property int modelData; icon: "timer"; label: root.tr("n_minutes", { n: modelData }); onActivated: { root.setSleep(modelData); root.closeSheet() } }
                 }
-                SheetOption { icon: "music"; label: "End of track"; active: root.sleepEndOfTrack; onActivated: { root.setSleep("track"); root.closeSheet() } }
-                SheetOption { icon: "close"; label: "Off"; active: root.sleepMinutesLeft < 0 && !root.sleepEndOfTrack; onActivated: { root.setSleep(null); root.closeSheet() } }
+                SheetOption { icon: "music"; label: root.tr("end_of_track"); active: root.sleepEndOfTrack; onActivated: { root.setSleep("track"); root.closeSheet() } }
+                SheetOption { icon: "close"; label: root.tr("off"); active: root.sleepMinutesLeft < 0 && !root.sleepEndOfTrack; onActivated: { root.setSleep(null); root.closeSheet() } }
               }
 
               // ---- settings ----
@@ -1974,17 +1992,17 @@ Panel {
                 Column {
                   width: parent.width
                   spacing: Style.space(2)
-                  Text { text: "Language"; color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.title; font.bold: true; bottomPadding: Style.space(4) }
-                  Text { text: "Affects notifications and content language on your Tunedex account."; color: Qt.darker(Color.foreground, 1.5); font.family: Style.font.family; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap; width: parent.width; bottomPadding: Style.space(4) }
+                  Text { text: root.tr("language"); color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.title; font.bold: true; bottomPadding: Style.space(4) }
+                  Text { text: root.tr("language_hint"); color: Qt.darker(Color.foreground, 1.5); font.family: Style.font.family; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap; width: parent.width; bottomPadding: Style.space(4) }
                   SheetOption { icon: "globe"; label: "English"; active: root.session && root.session.lang === "en"; onActivated: root.saveLangChoice("en") }
                   SheetOption { icon: "globe"; label: "فارسی"; active: root.session && root.session.lang === "fa"; onActivated: root.saveLangChoice("fa") }
                 }
                 Column {
                   width: parent.width
                   spacing: Style.space(2)
-                  Text { text: "Notifications"; color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.title; font.bold: true; bottomPadding: Style.space(4) }
+                  Text { text: root.tr("notifications"); color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.title; font.bold: true; bottomPadding: Style.space(4) }
                   Repeater {
-                    model: [["all", "Every update"], ["weekly", "Weekly digest"], ["off", "Off"]]
+                    model: [["all", root.tr("notif_all")], ["weekly", root.tr("notif_weekly")], ["off", root.tr("notif_off")]]
                     SheetOption {
                       required property var modelData
                       icon: modelData[0] === "off" ? "close" : "bell"
@@ -2001,8 +2019,8 @@ Panel {
                 width: parent.width
                 spacing: Style.space(6)
                 visible: root.activeSheet === "queue"
-                Text { text: "Queue"; color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.title; font.bold: true }
-                Text { visible: root.currentTrackId !== null; text: "Now playing"; color: Qt.darker(Color.foreground, 1.5); font.family: Style.font.family; font.pixelSize: Style.font.caption }
+                Text { text: root.tr("queue"); color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.title; font.bold: true }
+                Text { visible: root.currentTrackId !== null; text: root.tr("now_playing"); color: Qt.darker(Color.foreground, 1.5); font.family: Style.font.family; font.pixelSize: Style.font.caption }
                 TrackRow {
                   visible: root.currentTrackId !== null
                   width: parent.width
@@ -2014,7 +2032,7 @@ Panel {
                 }
                 Text {
                   visible: root.queueIndex + 1 < root.queueIds.length
-                  text: "Up next · " + (root.queueIds.length - root.queueIndex - 1)
+                  text: root.tr("up_next") + " · " + (root.queueIds.length - root.queueIndex - 1)
                   color: Qt.darker(Color.foreground, 1.5)
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
@@ -2023,18 +2041,19 @@ Panel {
                 Repeater {
                   model: root.queueIds.slice(root.queueIndex + 1)
                   Item {
+                    id: queueRow
                     required property var modelData
                     required property int index
                     width: sheetContent.width
                     height: Style.space(52)
-                    readonly property var tr: root.trackById[modelData]
+                    readonly property var queuedTrack: root.trackById[modelData]
                     TrackRow {
                       anchors.left: parent.left
                       anchors.right: removeBtn.left
                       width: parent.width - Style.space(30)
-                      track: parent.tr
+                      track: queueRow.queuedTrack
                       showMenu: false
-                      coverSrc: (root.session && parent.tr && parent.tr.cover) ? Model.coverUrl(parent.tr, root.session.token) : ""
+                      coverSrc: (root.session && queueRow.queuedTrack && queueRow.queuedTrack.cover) ? Model.coverUrl(queueRow.queuedTrack, root.session.token) : ""
                       onActivated: root.jumpToQueueIndex(root.queueIndex + 1 + index)
                     }
                     IconButton {
@@ -2048,14 +2067,14 @@ Panel {
                 }
                 Text {
                   visible: root.queueIndex + 1 >= root.queueIds.length
-                  text: "Nothing queued"
+                  text: root.tr("nothing_queued")
                   color: Qt.darker(Color.foreground, 1.5)
                   font.family: Style.font.family
                   font.pixelSize: Style.font.bodySmall
                 }
                 Button {
                   visible: root.queueIndex + 1 < root.queueIds.length
-                  text: "Clear up next"
+                  text: root.tr("clear_up_next")
                   foreground: Color.urgent
                   bordered: true
                   onClicked: root.clearUpNext()
@@ -2148,8 +2167,8 @@ Panel {
   ConfirmDialog {
     anchors.fill: parent
     opened: root.signOutConfirmOpen
-    message: "Sign out of Tunedex?"
-    confirmText: "Sign out"
+    message: root.tr("sign_out_confirm")
+    confirmText: root.tr("sign_out")
     onCanceled: root.signOutConfirmOpen = false
     onConfirmed: root.signOut()
   }

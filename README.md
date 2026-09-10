@@ -19,8 +19,8 @@ like an Omarchy plugin first, Tunedex second (icon shapes stay Tunedex's own).
   Left-click opens the panel, middle-click toggles play/pause.
 - **Sign in** — tap "Sign in with Telegram", confirm via the bot Tunedex
   already uses, come back. No password ever touches this plugin.
-- **Home** — continue listening, Liked Songs + mixes quick picks, latest in
-  your library, recently played.
+- **Home** — greeting with your name, continue listening, Liked Songs + mixes
+  quick picks, latest in your library, recently played.
 - **Library** — every chip the site has: Tracks, Playlists, Liked, Artists,
   Albums, Genres, Channels. Drilling into any of them (a playlist, an artist,
   a channel, a mix) gets its own screen with Play/Shuffle and the right
@@ -34,6 +34,10 @@ like an Omarchy plugin first, Tunedex second (icon shapes stay Tunedex's own).
   rest.
 - **Sleep timer** — 15/30/45/60 min or end-of-track.
 - **Settings** — language and notification-frequency, same as the site's.
+  Switching language actually re-translates the plugin's own UI (real
+  strings lifted from the site's `strings/en.js`/`strings/fa.js`, not just a
+  server-side preference) — layout stays left-to-right even for Persian,
+  no RTL mirroring.
 - **Connect a channel** / **new playlist** — right from the plugin.
 
 Audio is decoded locally via QtMultimedia, streamed directly from Tunedex's
@@ -79,6 +83,7 @@ IconButton.qml   small round icon hit-target (shuffle/repeat/settings/…)
 SheetOption.qml  one row in a bottom sheet (track menu, settings, …)
 TrackRow.qml     one library/search/queue list row, with its "…" menu
 Model.js         pure helpers: curl/URL builders, response parsing, icon data
+I18n.js          UI strings, English + Persian (real site copy, keyed the same)
 ```
 
 ## Limitations

@@ -63,7 +63,8 @@ BarWidget {
     anchors.fill: parent
     bar: root.bar
     slotSize: Style.bar.statusSlot
-    tooltipText: root.signedIn ? (root.nowTitle || "Tunedex") : "Tunedex — sign in"
+    tooltipText: root.signedIn ? (root.nowTitle || "Tunedex")
+      : "Tunedex — " + (panelLoader.item ? panelLoader.item.tr("signin_btn") : "Sign in with Telegram")
     iconComponent: markComponent
 
     onPressed: function(b) {
