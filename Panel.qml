@@ -409,7 +409,12 @@ Panel {
     owner: root.barIdentity
     bar: root.bar
     open: root.opened
-    centerOnBar: true
+    // false (the default): drop the panel under the bar icon, like every
+    // other bar-widget popup. centerOnBar:true — copied from weather's
+    // Panel.qml without checking what it does — instead centers on the
+    // whole screen regardless of where the icon sits, which is why it
+    // opened detached from the pill on the right.
+    centerOnBar: false
     focusTarget: keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(400))
     contentHeight: panel.fittedContentHeight(Style.space(560))
@@ -421,22 +426,9 @@ Panel {
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
 
-      // Tunedex's own dark-teal surface, independent of the system theme —
-      // this is the plugin's whole point: it should look like the site.
-      Rectangle {
-        anchors.fill: parent
-        radius: Style.cornerRadius
-        color: Model.COLOR.bg
-        Rectangle {
-          anchors.fill: parent
-          radius: parent.radius
-          gradient: Gradient {
-            GradientStop { position: 0.0; color: Model.COLOR.bgTint }
-            GradientStop { position: 0.7; color: Model.COLOR.bg }
-          }
-          opacity: 0.9
-        }
-      }
+      // No custom background here — KeyboardPanel's own card (Color.popups.background,
+      // themed border) already paints the surface, same as every other bar-widget
+      // popup. Painting our own over it is what made the panel look un-Omarchy.
 
       // Plain Item, not Column: trackList below fills whatever height is
       // left, which would be a circular binding under a Column (whose own
@@ -463,17 +455,13 @@ Panel {
               width: Style.space(24); height: Style.space(24)
               radius: width * 0.28
               anchors.verticalCenter: parent.verticalCenter
-              gradient: Gradient {
-                orientation: Gradient.Horizontal
-                GradientStop { position: 0.0; color: Model.COLOR.accent2 }
-                GradientStop { position: 1.0; color: Model.COLOR.accent }
-              }
-              Icon { anchors.centerIn: parent; name: "music"; color: "white"; width: Style.space(14); height: Style.space(14) }
+              color: Color.accent
+              Icon { anchors.centerIn: parent; name: "music"; color: Color.background; width: Style.space(14); height: Style.space(14) }
             }
 
             Text {
               text: "Tunedex"
-              color: Model.COLOR.fg
+              color: Color.foreground
               font.family: Style.font.family
               font.pixelSize: Style.font.heading
               font.bold: true
@@ -490,7 +478,7 @@ Panel {
             Text {
               visible: text !== ""
               text: root.session && root.session.user ? (root.session.user.first_name || root.session.user.username || "") : ""
-              color: Model.COLOR.muted
+              color: Qt.darker(Color.foreground, 1.5)
               font.family: Style.font.family
               font.pixelSize: Style.font.bodySmall
               anchors.verticalCenter: parent.verticalCenter
@@ -519,15 +507,13 @@ Panel {
             id: searchField
             anchors.fill: parent
             placeholderText: "Search your library"
-            foreground: Model.COLOR.fg
-            accent: Model.COLOR.accent
             font.family: Style.font.family
             leftPadding: Style.space(30)
             onTextChanged: root.searchQuery = text
           }
           Icon {
             name: "search"
-            color: Model.COLOR.muted
+            color: Qt.darker(Color.foreground, 1.5)
             width: Style.space(14); height: Style.space(14)
             anchors.left: parent.left
             anchors.leftMargin: Style.space(9)
@@ -550,7 +536,7 @@ Panel {
           anchors.top: searchRow.bottom
           anchors.topMargin: Style.space(6)
           text: root.libraryNotice
-          color: Model.COLOR.danger
+          color: Color.urgent
           font.family: Style.font.family
           font.pixelSize: Style.font.bodySmall
           width: parent.width
@@ -569,18 +555,14 @@ Panel {
             anchors.horizontalCenter: parent.horizontalCenter
             width: Style.space(72); height: Style.space(72)
             radius: width / 2
-            gradient: Gradient {
-              orientation: Gradient.Horizontal
-              GradientStop { position: 0.0; color: Model.COLOR.accent2 }
-              GradientStop { position: 1.0; color: Model.COLOR.accent }
-            }
-            Icon { anchors.centerIn: parent; name: "music"; color: "white"; width: Style.space(30); height: Style.space(30) }
+            color: Color.accent
+            Icon { anchors.centerIn: parent; name: "music"; color: Color.background; width: Style.space(30); height: Style.space(30) }
           }
 
           Text {
             anchors.horizontalCenter: parent.horizontalCenter
             text: "Sign in to Tunedex"
-            color: Model.COLOR.fg
+            color: Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.title
             font.bold: true
@@ -594,7 +576,7 @@ Panel {
             text: root.signinExpired ? "That sign-in code expired." :
                   (root.signinCode !== "" ? "Confirm in Telegram, then come back — this closes on its own." :
                   "Confirms through your Tunedex bot on Telegram. No browser, no re-typing anything here.")
-            color: Model.COLOR.muted
+            color: Qt.darker(Color.foreground, 1.5)
             font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
           }
@@ -602,8 +584,8 @@ Panel {
           Button {
             anchors.horizontalCenter: parent.horizontalCenter
             text: root.signinBusy ? "Waiting for confirmation…" : (root.signinExpired ? "Try again" : "Sign in with Telegram")
-            foreground: Model.COLOR.accentFg
-            background: Model.COLOR.accent
+            foreground: Color.background
+            background: Color.accent
             bordered: false
             horizontalPadding: Style.space(18)
             verticalPadding: Style.space(9)
@@ -617,7 +599,7 @@ Panel {
             visible: root.signinCode !== "" && !root.signinExpired
             anchors.horizontalCenter: parent.horizontalCenter
             text: "or send  /start login_" + root.signinCode + "  to @" + root.signinBot
-            color: Model.COLOR.muted
+            color: Qt.darker(Color.foreground, 1.5)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
           }
@@ -661,7 +643,7 @@ Panel {
                 anchors.horizontalCenter: parent.horizontalCenter
                 visible: root.signedIn && root.visibleTracks.length === 0 && !root.tracksLoading && !root.searchLoading
                 text: root.searchActive ? "No matches" : "Your library is empty"
-                color: Model.COLOR.muted
+                color: Qt.darker(Color.foreground, 1.5)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.bodySmall
               }
@@ -670,7 +652,7 @@ Panel {
                 anchors.horizontalCenter: parent.horizontalCenter
                 visible: !root.searchActive && root.tracksNext && !root.tracksLoading
                 text: "Load more"
-                foreground: Model.COLOR.fg
+                foreground: Color.foreground
                 bordered: true
                 onClicked: root.loadMoreTracks()
               }
@@ -679,7 +661,7 @@ Panel {
                 anchors.horizontalCenter: parent.horizontalCenter
                 visible: root.tracksLoading || root.searchLoading
                 text: "Loading…"
-                color: Model.COLOR.muted
+                color: Qt.darker(Color.foreground, 1.5)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.bodySmall
               }
@@ -696,7 +678,7 @@ Panel {
         anchors.bottom: parent.bottom
         height: Style.space(78)
         radius: Style.cornerRadius
-        color: Model.COLOR.raised
+        color: Style.selectedFillFor(Color.foreground, Color.accent)
 
         PanelSlider {
           id: seekBar
@@ -707,16 +689,16 @@ Panel {
           trackHeight: Style.space(3)
           knobSize: Style.space(11)
           value: mediaPlayer.duration > 0 ? mediaPlayer.position / mediaPlayer.duration : 0
-          fillColor: Model.COLOR.accent
-          trackColor: Qt.rgba(1, 1, 1, 0.12)
-          knobColor: Model.COLOR.accent
+          fillColor: Color.accent
+          trackColor: Style.selectedFillFor(Color.foreground, Color.accent)
+          knobColor: Color.accent
           onReleased: function(v) { root.seekFraction(v) }
         }
 
         Text {
           visible: root.playerError !== ""
           text: root.playerError
-          color: Model.COLOR.danger
+          color: Color.urgent
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           anchors.top: seekBar.bottom
@@ -733,7 +715,7 @@ Panel {
           Rectangle {
             width: Style.space(44); height: Style.space(44)
             radius: Style.space(6)
-            color: Model.COLOR.surface
+            color: Style.hoverFillFor(Color.foreground, Color.accent)
             clip: true
             anchors.verticalCenter: parent.verticalCenter
 
@@ -748,7 +730,7 @@ Panel {
               visible: root.currentCover === ""
               anchors.centerIn: parent
               name: "music"
-              color: Model.COLOR.muted
+              color: Qt.darker(Color.foreground, 1.5)
               width: Style.space(18); height: Style.space(18)
             }
           }
@@ -760,7 +742,7 @@ Panel {
 
             Text {
               text: root.currentTitle
-              color: Model.COLOR.fg
+              color: Color.foreground
               font.family: Style.font.family
               font.pixelSize: Style.font.body
               elide: Text.ElideRight
@@ -768,7 +750,7 @@ Panel {
             }
             Text {
               text: root.currentArtist
-              color: Model.COLOR.muted
+              color: Qt.darker(Color.foreground, 1.5)
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               elide: Text.ElideRight
@@ -796,16 +778,12 @@ Panel {
             width: Style.space(34); height: Style.space(34)
             radius: width / 2
             anchors.verticalCenter: parent.verticalCenter
-            gradient: Gradient {
-              orientation: Gradient.Horizontal
-              GradientStop { position: 0.0; color: Model.COLOR.accent2 }
-              GradientStop { position: 1.0; color: Model.COLOR.accent }
-            }
+            color: Color.accent
             Icon {
               anchors.centerIn: parent
               anchors.horizontalCenterOffset: root.playing ? 0 : 1
               name: root.playing ? "pause" : "play"
-              color: Model.COLOR.accentFg
+              color: Color.background
               width: Style.space(15); height: Style.space(15)
             }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.togglePlayback() }
@@ -828,7 +806,7 @@ Panel {
           anchors.verticalCenter: parent.verticalCenter
           anchors.verticalCenterOffset: Style.space(4)
           text: Model.formatDuration(mediaPlayer.position / 1000) + " / " + Model.formatDuration(mediaPlayer.duration / 1000)
-          color: Model.COLOR.muted
+          color: Qt.darker(Color.foreground, 1.5)
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
         }

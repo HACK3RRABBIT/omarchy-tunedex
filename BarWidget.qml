@@ -73,26 +73,19 @@ BarWidget {
     }
   }
 
+  // Level-meter mark, no badge box — same monochrome-by-default treatment
+  // as the rest of the bar (weather's glyph, chand's plain price text):
+  // bar.foreground at rest, the shell's own accent color while playing.
   Component {
     id: markComponent
 
     Item {
       id: markRoot
-      readonly property color barColor: "#ffffff"
+      readonly property color barColor: root.playing ? Color.accent : root.bar.foreground
       readonly property bool dim: !root.signedIn
 
-      Rectangle {
-        anchors.fill: parent
-        radius: Math.min(width, height) * 0.28
-        opacity: markRoot.dim ? 0.35 : 1.0
-        gradient: Gradient {
-          orientation: Gradient.Horizontal
-          GradientStop { position: 0.0; color: "#3b82f6" }
-          GradientStop { position: 1.0; color: "#2dd4bf" }
-        }
-      }
-
       Row {
+        opacity: markRoot.dim ? 0.4 : 1.0
         anchors.centerIn: parent
         spacing: Math.max(1, markRoot.width * 0.09)
 

@@ -25,21 +25,6 @@ var ICONS = {
   music:       { filled: false, d: "M9 17.5V6l11-2.5v11.5 M4,17.5 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0 M15,15 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0" }
 }
 
-// ---- brand palette (from the site's :root custom properties) ----
-var COLOR = {
-  bg: "#0b1014",
-  bgTint: "#103138",
-  surface: "#121a20",
-  raised: "#1a252d",
-  line: "#ffffff14",
-  fg: "#e8f1f2",
-  muted: "#7f949b",
-  accent: "#2dd4bf",
-  accent2: "#3b82f6",
-  accentFg: "#06131a",
-  danger: "#ef5350"
-}
-
 function tzOffsetMinutes() {
   return -new Date().getTimezoneOffset()
 }
@@ -178,7 +163,7 @@ function parseSearch(json) {
 
 if (typeof module !== "undefined") {
   module.exports = {
-    BASE: BASE, ICONS: ICONS, COLOR: COLOR,
+    BASE: BASE, ICONS: ICONS,
     tzOffsetMinutes: tzOffsetMinutes, streamUrl: streamUrl, coverUrl: coverUrl,
     tokenSecondsLeft: tokenSecondsLeft, formatDuration: formatDuration,
     trackTitle: trackTitle, trackArtist: trackArtist,

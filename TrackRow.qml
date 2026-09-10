@@ -19,7 +19,8 @@ Item {
   Rectangle {
     anchors.fill: parent
     radius: Style.cornerRadius
-    color: root.active ? Qt.rgba(0.176, 0.831, 0.749, 0.10) : (hoverArea.containsMouse ? Qt.rgba(1, 1, 1, 0.05) : "transparent")
+    color: root.active ? Style.selectedFillFor(Color.foreground, Color.accent)
+      : (hoverArea.containsMouse ? Style.hoverFillFor(Color.foreground, Color.accent) : "transparent")
   }
 
   Row {
@@ -33,7 +34,7 @@ Item {
     Rectangle {
       width: Style.space(38); height: Style.space(38)
       radius: Style.space(5)
-      color: Model.COLOR.surface
+      color: Style.hoverFillFor(Color.foreground, Color.accent)
       clip: true
       anchors.verticalCenter: parent.verticalCenter
 
@@ -48,7 +49,7 @@ Item {
         visible: root.coverSrc === ""
         anchors.centerIn: parent
         name: "music"
-        color: Model.COLOR.muted
+        color: Qt.darker(Color.foreground, 1.5)
         width: Style.space(16); height: Style.space(16)
       }
     }
@@ -65,7 +66,7 @@ Item {
         Icon {
           visible: root.active
           name: "music"
-          color: Model.COLOR.accent
+          color: Color.accent
           width: Style.space(12); height: Style.space(12)
           anchors.verticalCenter: parent.verticalCenter
 
@@ -79,7 +80,7 @@ Item {
 
         Text {
           text: root.track ? Model.trackTitle(root.track) : ""
-          color: root.active ? Model.COLOR.accent : Model.COLOR.fg
+          color: root.active ? Color.accent : Color.foreground
           font.family: Style.font.family
           font.pixelSize: Style.font.body
           elide: Text.ElideRight
@@ -90,7 +91,7 @@ Item {
       Text {
         text: root.track ? Model.trackArtist(root.track) : ""
         visible: text !== ""
-        color: Model.COLOR.muted
+        color: Qt.darker(Color.foreground, 1.5)
         font.family: Style.font.family
         font.pixelSize: Style.font.caption
         elide: Text.ElideRight
@@ -105,7 +106,7 @@ Item {
     anchors.rightMargin: Style.space(8)
     anchors.verticalCenter: parent.verticalCenter
     text: root.track ? Model.formatDuration(root.track.duration) : ""
-    color: Model.COLOR.muted
+    color: Qt.darker(Color.foreground, 1.5)
     font.family: Style.font.family
     font.pixelSize: Style.font.caption
   }

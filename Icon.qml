@@ -1,14 +1,17 @@
 import QtQuick
 import QtQuick.Shapes
+import qs.Commons
 import "Model.js" as Model
 
 // One of Tunedex's own SVG icons (exact path data from the site), rendered
 // as a vector shape so it stays crisp at any size instead of relying on a
-// nerd-font glyph that may not exist in the user's font.
+// nerd-font glyph that may not exist in the user's font. Color is a plain
+// property, not baked in — callers pass theme tokens (Color.*) so icons
+// follow Omarchy's palette rather than Tunedex's own.
 Item {
   id: root
   property string name: "music"
-  property color color: "#e8f1f2"
+  property color color: Color.foreground
   property real strokeWidth: 1.75
 
   readonly property var spec: Model.ICONS[name] || Model.ICONS.music
