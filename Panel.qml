@@ -690,7 +690,9 @@ Panel {
 
   // ---- settings ----
   function saveLangChoice(code) {
-    if (!root.session) return
+    if (!root.session || root.session.lang === code) return
+    root.session = Object.assign({}, root.session, { lang: code, langChosen: true })
+    root.persistSession()
     saveLangProc.command = Model.saveLangArgs(root.session.token, code)
     saveLangProc.running = true
   }
@@ -882,7 +884,7 @@ Panel {
     // other bar-widget popup, instead of centering on the whole screen.
     centerOnBar: false
     focusTarget: keyCatcher
-    contentWidth: panel.fittedContentWidth(Style.space(408))
+    contentWidth: panel.fittedContentWidth(Style.space(444))
     contentHeight: panel.fittedContentHeight(Style.space(600))
 
     PanelKeyCatcher {
@@ -1688,14 +1690,15 @@ Panel {
         }
 
         Row {
+          id: nowPlayingInfo
           anchors.left: parent.left
-          anchors.leftMargin: Style.space(10)
+          anchors.leftMargin: Style.space(8)
           anchors.verticalCenter: parent.verticalCenter
           anchors.verticalCenterOffset: Style.space(4)
-          spacing: Style.space(8)
+          spacing: Style.space(6)
 
           Rectangle {
-            width: Style.space(44); height: Style.space(44)
+            width: Style.space(38); height: Style.space(38)
             radius: Style.space(6)
             color: Style.hoverFillFor(Color.foreground, Color.accent)
             clip: true
@@ -1713,14 +1716,14 @@ Panel {
               anchors.centerIn: parent
               name: "music"
               color: Qt.darker(Color.foreground, 1.5)
-              width: Style.space(18); height: Style.space(18)
+              width: Style.space(16); height: Style.space(16)
             }
 
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.activeSheet = "nowPlaying" }
           }
 
           Column {
-            width: Style.space(105)
+            width: Style.space(66)
             anchors.verticalCenter: parent.verticalCenter
             spacing: Style.space(2)
 
@@ -1728,7 +1731,7 @@ Panel {
               text: root.currentTitle
               color: Color.foreground
               font.family: Style.font.family
-              font.pixelSize: Style.font.body
+              font.pixelSize: Style.font.bodySmall
               elide: Text.ElideRight
               width: parent.width
             }
@@ -1743,18 +1746,30 @@ Panel {
           }
         }
 
+        // Every control the site puts in its expanded Now Playing view is
+        // reachable right from the mini bar too — the panel has the width
+        // to spare, and having to open a sheet just to hit shuffle or like
+        // made those feel broken/missing.
         Row {
-          anchors.centerIn: parent
-          anchors.horizontalCenterOffset: Style.space(58)
-          spacing: Style.space(8)
+          anchors.right: parent.right
+          anchors.rightMargin: Style.space(8)
+          anchors.verticalCenter: parent.verticalCenter
+          anchors.verticalCenterOffset: Style.space(4)
+          spacing: Style.space(3)
 
           IconButton {
+            icon: "shuffle"
+            active: root.shuffleOn
+            size: Style.space(24)
+            onActivated: root.toggleShuffle()
+          }
+          IconButton {
             icon: "previous"
-            size: Style.space(26)
+            size: Style.space(24)
             onActivated: root.playPrevTrack()
           }
           Rectangle {
-            width: Style.space(34); height: Style.space(34)
+            width: Style.space(32); height: Style.space(32)
             radius: width / 2
             anchors.verticalCenter: parent.verticalCenter
             color: Color.accent
@@ -1763,31 +1778,32 @@ Panel {
               anchors.horizontalCenterOffset: root.playing ? 0 : 1
               name: root.playing ? "pause" : "play"
               color: Color.background
-              width: Style.space(15); height: Style.space(15)
+              width: Style.space(14); height: Style.space(14)
             }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.togglePlayback() }
           }
           IconButton {
             icon: "next"
-            size: Style.space(26)
+            size: Style.space(24)
             onActivated: root.playNextTrack(false)
+          }
+          IconButton {
+            icon: root.repeatMode === "one" ? "repeatOne" : "repeat"
+            active: root.repeatMode !== "off"
+            size: Style.space(24)
+            onActivated: root.cycleRepeat()
+          }
+          IconButton {
+            icon: root.currentTrackId !== null && root.isLiked(root.currentTrackId) ? "heartFilled" : "heart"
+            active: root.currentTrackId !== null && root.isLiked(root.currentTrackId)
+            size: Style.space(24)
+            onActivated: if (root.currentTrackId !== null) root.toggleLike(root.currentTrackId)
           }
           IconButton {
             icon: "queue"
             size: Style.space(24)
             onActivated: root.activeSheet = "queue"
           }
-        }
-
-        Text {
-          anchors.right: parent.right
-          anchors.rightMargin: Style.space(10)
-          anchors.verticalCenter: parent.verticalCenter
-          anchors.verticalCenterOffset: Style.space(4)
-          text: Model.formatDuration(mediaPlayer.position / 1000) + " / " + Model.formatDuration(mediaPlayer.duration / 1000)
-          color: Qt.darker(Color.foreground, 1.5)
-          font.family: Style.font.family
-          font.pixelSize: Style.font.caption
         }
       }
 
@@ -1960,8 +1976,8 @@ Panel {
                   spacing: Style.space(2)
                   Text { text: "Language"; color: Color.foreground; font.family: Style.font.family; font.pixelSize: Style.font.title; font.bold: true; bottomPadding: Style.space(4) }
                   Text { text: "Affects notifications and content language on your Tunedex account."; color: Qt.darker(Color.foreground, 1.5); font.family: Style.font.family; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap; width: parent.width; bottomPadding: Style.space(4) }
-                  SheetOption { icon: "globe"; label: "English"; onActivated: root.saveLangChoice("en") }
-                  SheetOption { icon: "globe"; label: "فارسی"; onActivated: root.saveLangChoice("fa") }
+                  SheetOption { icon: "globe"; label: "English"; active: root.session && root.session.lang === "en"; onActivated: root.saveLangChoice("en") }
+                  SheetOption { icon: "globe"; label: "فارسی"; active: root.session && root.session.lang === "fa"; onActivated: root.saveLangChoice("fa") }
                 }
                 Column {
                   width: parent.width

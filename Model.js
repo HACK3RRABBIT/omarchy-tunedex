@@ -191,6 +191,7 @@ function parseSession(json) {
     user: json.user || null,
     admin: !!json.admin,
     notify: json.notify || "weekly",
+    lang: json.lang || "en",
     langChosen: !!json.lang_chosen,
     bot: json.bot || "TunedexAppBot"
   }
