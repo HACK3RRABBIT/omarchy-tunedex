@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.hack3rrabbit.tunedex",
   "name": "Tunedex",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "author": "HACK3RRABBIT",
   "description": "Unofficial Tunedex client for the Omarchy bar — sign in with your Tunedex account and play your library without opening the site or Telegram.",
   "license": "MIT",

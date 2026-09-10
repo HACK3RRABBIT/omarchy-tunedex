@@ -3,16 +3,20 @@ import qs.Commons
 import "Model.js" as Model
 
 // One row in the library/search list. Click plays it (and queues the rest
-// of the currently-visible list from that point). Highlighted + an
-// animated level-meter glyph when it's the track currently loaded.
+// of the currently-visible list from that point); the "…" button opens the
+// track context menu (play next, queue, like, add to playlist, …).
+// Highlighted + an animated level-meter glyph when it's the track currently
+// loaded.
 Item {
   id: root
   property var track: null
   property bool active: false
   property bool playing: false
   property string coverSrc: ""
+  property bool showMenu: true
 
   signal activated()
+  signal menuRequested()
 
   height: Style.space(52)
 
@@ -25,7 +29,7 @@ Item {
 
   Row {
     anchors.left: parent.left
-    anchors.right: durationLabel.left
+    anchors.right: rightCluster.left
     anchors.verticalCenter: parent.verticalCenter
     anchors.leftMargin: Style.space(6)
     anchors.rightMargin: Style.space(8)
@@ -100,15 +104,28 @@ Item {
     }
   }
 
-  Text {
-    id: durationLabel
+  Row {
+    id: rightCluster
     anchors.right: parent.right
-    anchors.rightMargin: Style.space(8)
+    anchors.rightMargin: Style.space(4)
     anchors.verticalCenter: parent.verticalCenter
-    text: root.track ? Model.formatDuration(root.track.duration) : ""
-    color: Qt.darker(Color.foreground, 1.5)
-    font.family: Style.font.family
-    font.pixelSize: Style.font.caption
+    spacing: Style.space(2)
+
+    Text {
+      anchors.verticalCenter: parent.verticalCenter
+      text: root.track ? Model.formatDuration(root.track.duration) : ""
+      color: Qt.darker(Color.foreground, 1.5)
+      font.family: Style.font.family
+      font.pixelSize: Style.font.caption
+    }
+
+    IconButton {
+      visible: root.showMenu
+      icon: "more"
+      size: Style.space(26)
+      anchors.verticalCenter: parent.verticalCenter
+      onActivated: root.menuRequested()
+    }
   }
 
   MouseArea {

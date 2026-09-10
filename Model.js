@@ -22,7 +22,18 @@ var ICONS = {
   close:       { filled: false, d: "M6 6l12 12M18 6L6 18" },
   chevronDown: { filled: false, d: "M6 9.5l6 6 6-6" },
   logout:      { filled: false, d: "M10 4H6a2 2 0 00-2 2v12a2 2 0 002 2h4M15 8l4 4-4 4M19 12H9" },
-  music:       { filled: false, d: "M9 17.5V6l11-2.5v11.5 M4,17.5 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0 M15,15 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0" }
+  music:       { filled: false, d: "M9 17.5V6l11-2.5v11.5 M4,17.5 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0 M15,15 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0" },
+  plus:        { filled: false, d: "M12 5v14M5 12h14" },
+  check:       { filled: false, d: "M5 12.5l4.5 4.5L19 7.5" },
+  timer:       { filled: false, d: "M9.5 2.5h5M12 8v5l3 2 M4.5,13.5 a7.5,7.5 0 1,0 15,0 a7.5,7.5 0 1,0 -15,0" },
+  queue:       { filled: false, d: "M4 6h16M4 12h16M4 18h10" },
+  home:        { filled: false, d: "M3.5 10.5L12 3.5l8.5 7M5.5 9v11h13V9M10 20v-5.5h4V20" },
+  library:     { filled: false, d: "M4 4.5h3v15H4zM9.5 4.5h3v15h-3zM15 5.6l2.9-.8 3.9 14.5-2.9.8z" },
+  back:        { filled: false, d: "M15 5l-7 7 7 7" },
+  bell:        { filled: false, d: "M6 16.5V11a6 6 0 0112 0v5.5l1.5 2h-15zM10 20.5a2 2 0 004 0" },
+  globe:       { filled: false, d: "M3.5,12 a8.5,8.5 0 1,0 17,0 a8.5,8.5 0 1,0 -17,0 M3.5 12h17M12 3.5c2.5 2.5 3.8 5.3 3.8 8.5s-1.3 6-3.8 8.5c-2.5-2.5-3.8-5.3-3.8-8.5s1.3-6 3.8-8.5z" },
+  settings:    { filled: false, d: "M9,12 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 M12 2.5l1.6 2.3 2.7-.7.7 2.7 2.3 1.6-1.4 2.4 1.4 2.4-2.3 1.6-.7 2.7-2.7-.7L12 21.5l-1.6-2.3-2.7.7-.7-2.7-2.3-1.6 1.4-2.4-1.4-2.4 2.3-1.6.7-2.7 2.7.7z" },
+  more:        { filled: true,  d: "M5 10.25a1.75 1.75 0 110 3.5 1.75 1.75 0 010-3.5zm7 0a1.75 1.75 0 110 3.5 1.75 1.75 0 010-3.5zm7 0a1.75 1.75 0 110 3.5 1.75 1.75 0 010-3.5z" }
 }
 
 function tzOffsetMinutes() {
@@ -107,6 +118,51 @@ function searchArgs(token, q) {
     "-H", "Authorization: Bearer " + token, url]
 }
 
+// Generic authenticated request — every mutation (likes, playlists, channels,
+// settings) is one of these, method + path + optional JSON body.
+function apiArgs(token, method, path, body) {
+  var args = ["curl", "-sS", "-o", "-", "-w", "\n%{http_code}", "-X", method, "--max-time", "10",
+    "-H", "Authorization: Bearer " + token]
+  if (body !== undefined) args.push("-H", "Content-Type: application/json", "-d", JSON.stringify(body))
+  args.push(BASE + path)
+  return args
+}
+
+function likeArgs(token, id, liked) { return apiArgs(token, liked ? "DELETE" : "PUT", "/api/likes/" + encodeURIComponent(id)) }
+function createPlaylistArgs(token, title) { return apiArgs(token, "POST", "/api/playlists", { title: title }) }
+function deletePlaylistArgs(token, pid) { return apiArgs(token, "DELETE", "/api/playlists/" + encodeURIComponent(pid)) }
+function addToPlaylistArgs(token, pid, trackId) { return apiArgs(token, "POST", "/api/playlists/" + encodeURIComponent(pid) + "/items", { recording_id: trackId }) }
+function removeFromPlaylistArgs(token, pid, trackId) { return apiArgs(token, "DELETE", "/api/playlists/" + encodeURIComponent(pid) + "/items/" + encodeURIComponent(trackId)) }
+function connectChannelArgs(token, ref) { return apiArgs(token, "POST", "/api/channels/connect", { ref: ref }) }
+function removeChannelArgs(token, id) { return apiArgs(token, "DELETE", "/api/channels/" + encodeURIComponent(id)) }
+function channelArgs(token, id) { return apiArgs(token, "GET", "/api/channels/" + encodeURIComponent(id)) }
+function saveLangArgs(token, lang) { return apiArgs(token, "PATCH", "/api/me", { lang: lang }) }
+function saveNotifyArgs(token, notify) { return apiArgs(token, "PATCH", "/api/me", { notify: notify }) }
+function saveMixArgs(token, kind) { return apiArgs(token, "POST", "/api/mixes/" + encodeURIComponent(kind) + "/save") }
+
+function groupTracksArgs(token, kind, name, cursor) {
+  var FILTER = { artists: "artist", albums: "album", genres: "genre" }
+  var url = "/api/tracks?limit=50&" + FILTER[kind] + "=" + encodeURIComponent(name || "")
+  if (cursor) url += "&cursor=" + encodeURIComponent(cursor)
+  return apiArgs(token, "GET", url)
+}
+function tracksByIdsArgs(token, ids) {
+  return apiArgs(token, "GET", "/api/tracks?ids=" + ids.join(","))
+}
+function channelTracksArgs(token, channelId, cursor) {
+  var url = "/api/tracks?limit=50&channel=" + encodeURIComponent(channelId)
+  if (cursor) url += "&cursor=" + encodeURIComponent(cursor)
+  return apiArgs(token, "GET", url)
+}
+function groupsArgs(token, kind, offset) {
+  return apiArgs(token, "GET", "/api/library/groups?kind=" + encodeURIComponent(kind) + "&limit=100&offset=" + (offset || 0))
+}
+function mixesArgs(token) { return apiArgs(token, "GET", "/api/mixes") }
+function mixItemsArgs(token, kind) { return apiArgs(token, "GET", "/api/mixes/" + encodeURIComponent(kind)) }
+function recentsArgs(token) { return apiArgs(token, "GET", "/api/recents?limit=20") }
+function homeArgs(token) { return apiArgs(token, "GET", "/api/home") }
+function discoverArgs(token) { return apiArgs(token, "GET", "/api/discover") }
+
 // ---- response parsing (defensive: curl/network hiccups should never throw) ----
 function parseJson(raw, fallback) {
   try {
@@ -161,6 +217,42 @@ function parseSearch(json) {
   return { tracks: json.tracks || [], artists: json.artists || [], albums: json.albums || [] }
 }
 
+function parseChannel(json) {
+  json = json || {}
+  return { id: json.id, title: json.title || "", username: json.username || "", cover_id: json.cover_id || null,
+    n_tracks: json.n_tracks || 0, tracks: json.tracks || [], next: json.next || null, kind: json.kind || "channel" }
+}
+
+function parseGroupsPage(json) {
+  json = json || {}
+  return json.items || []
+}
+
+function parseMixes(json) {
+  json = json || {}
+  return json.mixes || []
+}
+
+// Boot payload shapes for Home: items carry a `reason` (for_you/discover),
+// tag with the seed id up front so recommendation context survives.
+function tagReasons(items) {
+  var out = []
+  for (var i = 0; i < items.length; i++) {
+    var t = items[i]
+    t._seed = (t.reason && t.reason.seed) || null
+    out.push(t)
+  }
+  return out
+}
+function parseHome(json) {
+  json = json || {}
+  return { items: tagReasons(json.items || []), needsConnection: !!json.needs_connection }
+}
+function parseDiscover(json) {
+  json = json || {}
+  return tagReasons(json.items || [])
+}
+
 if (typeof module !== "undefined") {
   module.exports = {
     BASE: BASE, ICONS: ICONS,
@@ -169,8 +261,19 @@ if (typeof module !== "undefined") {
     trackTitle: trackTitle, trackArtist: trackArtist,
     authStartArgs: authStartArgs, authPollArgs: authPollArgs, authRefreshArgs: authRefreshArgs,
     libraryArgs: libraryArgs, tracksArgs: tracksArgs, searchArgs: searchArgs,
+    apiArgs: apiArgs, likeArgs: likeArgs,
+    createPlaylistArgs: createPlaylistArgs, deletePlaylistArgs: deletePlaylistArgs,
+    addToPlaylistArgs: addToPlaylistArgs, removeFromPlaylistArgs: removeFromPlaylistArgs,
+    connectChannelArgs: connectChannelArgs, removeChannelArgs: removeChannelArgs, channelArgs: channelArgs,
+    saveLangArgs: saveLangArgs, saveNotifyArgs: saveNotifyArgs, saveMixArgs: saveMixArgs,
+    groupTracksArgs: groupTracksArgs, channelTracksArgs: channelTracksArgs, groupsArgs: groupsArgs,
+    tracksByIdsArgs: tracksByIdsArgs,
+    mixesArgs: mixesArgs, mixItemsArgs: mixItemsArgs, recentsArgs: recentsArgs,
+    homeArgs: homeArgs, discoverArgs: discoverArgs,
     parseJson: parseJson, splitHttpOutput: splitHttpOutput,
     parseSession: parseSession, parseLibrary: parseLibrary,
-    parseTracksPage: parseTracksPage, parseSearch: parseSearch
+    parseTracksPage: parseTracksPage, parseSearch: parseSearch,
+    parseChannel: parseChannel, parseGroupsPage: parseGroupsPage, parseMixes: parseMixes,
+    parseHome: parseHome, parseDiscover: parseDiscover
   }
 }
