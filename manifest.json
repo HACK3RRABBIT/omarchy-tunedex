@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.hack3rrabbit.tunedex",
+  "name": "Tunedex",
+  "version": "0.1.0",
+  "author": "HACK3RRABBIT",
+  "description": "Unofficial Tunedex client for the Omarchy bar — sign in with your Tunedex account and play your library without opening the site or Telegram.",
+  "license": "MIT",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Tunedex",
+    "description": "Play your Tunedex library from the bar",
+    "category": "Media",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
